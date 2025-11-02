@@ -21,10 +21,17 @@ class Train:
         self.optimiser = torch.optim.AdamW(model.parameters(), "INSERT Learning Rate")
         self.loss = nn.CrossEntropyLoss()
     
-    def trainEpoch(self, trainLoader):
-        self.trainLoader = trainLoader
+    def trainPerEpoch(self, trainLoader):
+        self.model.train()
         totalLoss = 0
-        
+        for images, labels in trainLoader:
+            self.optimiser.zero_grad()
+            output = self.model(images)
+            loss = self.loss(output, labels)
+            loss.backwards()
+            self.optimiser.step()
+            totalLoss += loss.item() # loss.items() makes loss value as a python float
+        return totalLoss / len(trainLoader)
 
 
 
