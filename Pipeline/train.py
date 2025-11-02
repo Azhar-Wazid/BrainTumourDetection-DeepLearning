@@ -33,6 +33,12 @@ class Train:
             totalLoss += loss.item() # loss.items() makes loss value as a python float
         return totalLoss / len(trainLoader)
 
+    def trainLoop(self, trainLoader, amountOfEpoch):
+        for epoch in amountOfEpoch:
+            trainLoss = self.trainPerEpoch(trainLoader)
+
+
+
 
 
 
