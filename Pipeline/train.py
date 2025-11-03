@@ -33,12 +33,25 @@ class Train:
             totalLoss += loss.item() # loss.items() makes loss value as a python float
         return totalLoss / len(trainLoader)
 
-    def trainLoop(self, trainLoader, amountOfEpoch):
+    def validate(self, valLoader):
+        self.model.eval()
+        valLoss = 0
+        total = 0
+        correct = 0
+        for images, labels in valLoader:
+            output = self.model(images)
+            loss = self.loss(output, labels)
+            valLoss += loss.item() # loss.items() makes loss value as a python float
+            total += labels.size(0) # gets batch size
+            _, preds = torch.max(output, 1) # gets the prediction
+            correct += (preds == labels).sum().item() # counts all predictions that were correct
+        acc = correct / total # calculates accuracy
+        return valLoss / len(valLoader), acc
+
+    def trainLoop(self, trainLoader, valLoader, amountOfEpoch):
         for epoch in amountOfEpoch:
             trainLoss = self.trainPerEpoch(trainLoader)
-
-
-
-
+            valLoss, accuracy = self.validate(valLoader)
+            print(f"Epoch {epoch+1}: \nTrain Loss={trainLoss:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={accuracy:.4f} ")
 
 
