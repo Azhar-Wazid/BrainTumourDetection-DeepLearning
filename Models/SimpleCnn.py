@@ -47,9 +47,9 @@ class SimpleCNN(nn.Module):
             )
         )
         
-    def foward(self, input):
+    def forward(self, input):
         input = self.convBlock1(input)
         input = self.convBlock2(input)
         input = self.convBlock3(input)
-        input = self.classifer(input)
-        return input
+        output = self.classifer(input)
+        return output
