@@ -15,7 +15,7 @@ logging metrics
 checkpoints
 """
 
-class Train:
+class ModelFunc:
     def __init__(self, model):
         self.model = model
         self.optimiser = torch.optim.AdamW(model.parameters(), "INSERT Learning Rate")
@@ -53,5 +53,17 @@ class Train:
             trainLoss = self.trainPerEpoch(trainLoader)
             valLoss, accuracy = self.validate(valLoader)
             print(f"Epoch {epoch+1}: \nTrain Loss={trainLoss:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={accuracy:.4f} ")
+
+    def test(self, testLoader):
+        self.model.eval()
+        total = 0
+        correct = 0
+        for images, labels in testLoader:
+            output = self.model(images)
+            total += labels.size(0) # gets batch size
+            _, preds = torch.max(output, 1) # gets the prediction
+            correct += (preds == labels).sum().item() # counts all predictions that were correct
+        acc = correct / total # calculates accuracy
+        print(acc)
 
 
