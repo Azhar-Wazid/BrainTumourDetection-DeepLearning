@@ -1,3 +1,3 @@
 from .DataLoader import MNISTLoader
 from .ModelFunc import *
-from ModelEvaluation import *
+from .ModelEvaluation import *
