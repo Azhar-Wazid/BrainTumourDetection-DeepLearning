@@ -18,9 +18,11 @@ def main():
 
     trainLoader, valLoader, testLoader = MNISTLoader()
     
-    epochs = 20
+    epochs = 50
     trainLossList, valLossList = modelFunc.trainLoop(trainLoader= trainLoader, valLoader= valLoader, amountOfEpoch= epochs)
-    pltLoss(trainLoss=trainLossList, valLoss=valLossList, epochs=epochs)
+    #print(trainLossList)
+    #print(valLossList)
+    pltLoss(trainLoss=trainLossList, valLoss=valLossList)
 
 
     #modelFunc.test(testLoader= testLoader)

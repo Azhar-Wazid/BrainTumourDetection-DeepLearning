@@ -1,6 +1,8 @@
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
-def pltLoss(trainLoss, valLoss, epochs):
+def pltLoss(trainLoss, valLoss):
+    epochs = range(1, len(trainLoss) + 1) 
+    
     plt.plot(epochs, trainLoss, label="Training Loss")
     plt.plot(epochs, valLoss, label="Validation Loss")
     plt.xlabel("Epoch")
