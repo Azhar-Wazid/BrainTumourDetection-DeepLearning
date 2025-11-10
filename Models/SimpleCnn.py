@@ -12,6 +12,7 @@ class SimpleCNN(nn.Module):
                 stride= 1,
                 padding= 1
             ),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size= 2)
         )
@@ -23,6 +24,7 @@ class SimpleCNN(nn.Module):
                 stride= 1,
                 padding= 1
             ),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size= 2)
         )
@@ -34,6 +36,7 @@ class SimpleCNN(nn.Module):
                 stride= 1,
                 padding= 1
             ),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size= 2)
         )
@@ -41,6 +44,7 @@ class SimpleCNN(nn.Module):
         #Create Flatten/Output Layer
         self.classifer = nn.Sequential(
             nn.Flatten(),
+            nn.Dropout(0.5),
             nn.Linear(
                 in_features= 128 * 3 *3, # multiply by height and width of image after all convBlocks
                 out_features= obj_classes

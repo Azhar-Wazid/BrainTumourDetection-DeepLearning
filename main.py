@@ -1,6 +1,6 @@
 import torch
 from Models.SimpleCnn import SimpleCNN
-from Pipeline import MNISTLoader, ModelFunc, pltLoss
+from Pipeline import MNISTLoader, ModelFunc, pltLoss, pltAcc
 
 def main():
     #Checks if the computer has a compatible GPU else assign device as cpu
@@ -19,10 +19,11 @@ def main():
     trainLoader, valLoader, testLoader = MNISTLoader()
     
     epochs = 50
-    trainLossList, valLossList = modelFunc.trainLoop(trainLoader= trainLoader, valLoader= valLoader, amountOfEpoch= epochs)
+    trainLossList, valLossList, trainAccList, valAccList = modelFunc.trainLoop(trainLoader= trainLoader, valLoader= valLoader, amountOfEpoch= epochs)
     #print(trainLossList)
     #print(valLossList)
     pltLoss(trainLoss=trainLossList, valLoss=valLossList)
+    pltAcc(trainAcc=trainAccList, valAcc=valAccList)
 
 
     #modelFunc.test(testLoader= testLoader)
