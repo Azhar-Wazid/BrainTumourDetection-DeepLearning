@@ -1,5 +1,7 @@
 import torch
 from Models.SimpleCnn import SimpleCNN
+import torchvision.models as models
+import matplotlib.pyplot as plt
 from Pipeline import MNISTLoader, ModelFunc, pltLoss, pltAcc
 
 def main():
@@ -9,7 +11,9 @@ def main():
     else:
         device = torch.device("cpu")
     
-    model = SimpleCNN(inputShape= 1, obj_classes= 10)
+    #model = SimpleCNN(inputShape= 1, obj_classes= 10)
+    model = models.resnet18(pretrained=True)
+    #model = models.efficientnet_b0(pretrained=True)
     #x = torch.randn(1, 1, 28, 28)
     #print(model(x).shape)
 
@@ -18,13 +22,13 @@ def main():
 
     trainLoader, valLoader, testLoader = MNISTLoader()
     
-    epochs = 50
+    epochs = 10
     trainLossList, valLossList, trainAccList, valAccList = modelFunc.trainLoop(trainLoader= trainLoader, valLoader= valLoader, amountOfEpoch= epochs)
     #print(trainLossList)
     #print(valLossList)
     pltLoss(trainLoss=trainLossList, valLoss=valLossList)
     pltAcc(trainAcc=trainAccList, valAcc=valAccList)
-
+    
 
     #modelFunc.test(testLoader= testLoader)
 

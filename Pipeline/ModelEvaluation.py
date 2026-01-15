@@ -11,6 +11,7 @@ def pltLoss(trainLoss, valLoss):
     plt.legend()
     plt.grid(True)
     plt.show()
+    
 
 def pltAcc(trainAcc, valAcc):
     epochs = range(1, len(trainAcc) + 1) 
@@ -23,3 +24,4 @@ def pltAcc(trainAcc, valAcc):
     plt.legend()
     plt.grid(True)
     plt.show()
+
