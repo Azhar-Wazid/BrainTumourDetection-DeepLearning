@@ -1,17 +1,10 @@
+import os
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+import numpy as np
+from sklearn.metrics import (precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, roc_curve)
 """
-Loss function
-Optimiser
-    - Learning Rate
-Dataloader
-training loop (epoch loop)
-    - foward
-    - loss func
-    - backprop
-    - optimiser
-logging metrics
 checkpoints
 """
 
@@ -32,69 +25,158 @@ class ModelFunc:
             #loads images and labels to cpu or GPU
             images = images.to(self.device)
             labels = labels.to(self.device)
+
             self.optimiser.zero_grad()
             output = self.model(images)
             loss = self.loss(output, labels)
             loss.backward()
             self.optimiser.step()
+
             totalLoss += loss.item() # loss.items() makes loss value as a python float
             total += labels.size(0) # gets batch size
             _, preds = torch.max(output, 1) # gets the prediction
             correct += (preds == labels).sum().item() # counts all predictions that were correct
-        acc = correct / total # calculates accuracy
-        return totalLoss / len(trainLoader), acc
 
-    def validate(self, valLoader):
+        return {
+            "loss": totalLoss / len(trainLoader),
+            "acc": correct / total
+        }
+
+    def evaluate(self, dataLoader):
         self.model.eval()
-        valLoss = 0
+        totalLoss = 0
         total = 0
         correct = 0
+
+        outputPred = []
+        outputTrue = []
+        outputProb = []
         with torch.no_grad():
-            for images, labels in valLoader:
+            for images, labels in dataLoader:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
+
                 output = self.model(images)
                 loss = self.loss(output, labels)
-                valLoss += loss.item() # loss.items() makes loss value as a python float
-                total += labels.size(0) # gets batch size
-                _, preds = torch.max(output, 1) # gets the prediction
-                correct += (preds == labels).sum().item() # counts all predictions that were correct
-        acc = correct / total # calculates accuracy
-        return valLoss / len(valLoader), acc
+                totalLoss += loss.item() # loss.items() makes loss value as a python float
 
-    def trainLoop(self, trainLoader, valLoader, amountOfEpoch):
+                probs = torch.softmax(output, dim = 1)
+                probsFilter = probs[:, 1] # this filters the models probabilities so it only has either healthy or tumour
+                _, preds = torch.max(output, 1) # gets the prediction
+
+                total += labels.size(0) # gets batch size
+                correct += (preds == labels).sum().item() # counts all predictions that were correct
+
+                outputTrue.extend(labels.detach().cpu().numpy())
+                outputPred.extend(preds.detach().cpu().numpy())
+                outputProb.extend(probsFilter.detach().cpu().numpy())
+
+        acc = correct / total # calculates accuracy
+        avgLoss = totalLoss / len(dataLoader)
+        return avgLoss, acc, np.array(outputTrue), np.array(outputPred), np.array(outputProb)
+
+    def trainLoop(self, trainLoader, valLoader, amountOfEpoch, checkpointPath):
         torch.manual_seed(42)
-        torch.cuda.manual_seed_all(42)
-        trainLossList = []
-        valLossList = []
-        trainAccList = []
-        valAccList = []
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(42)
+
+        trainLossList, valLossList = [], []
+        trainAccList, valAccList = [], []
+        valPrecisionList, valRecallList, valF1List, valRocAucList = [], [], [], []
+
+        bestValLoss = float("inf")
+        epochsNoImprove = 0
+        minDelta = 0.0001
+        earlyStopping = 5
+        
         for epoch in tqdm(range(amountOfEpoch), desc="Epochs"):
-            trainLoss, trainAcc = self.trainPerEpoch(trainLoader)
-            valLoss, valAcc = self.validate(valLoader)
+            trainMetrics = self.trainPerEpoch(trainLoader)
+            valLoss, valAcc, valMetrics = self.validate(valLoader)
             self.scheduler.step(valLoss)
 
-            trainLossList.append(trainLoss)
+            trainLossList.append(trainMetrics['loss'])
             valLossList.append(valLoss)
-            trainAccList.append(trainAcc)
+            trainAccList.append(trainMetrics['acc'])
             valAccList.append(valAcc)
-            print(f"Epoch {epoch+1}: \nTrain Loss={trainLoss:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={valAcc:.4f} ")
-        return trainLossList, valLossList, trainAccList, valAccList
+
+            valPrecisionList.append(valMetrics["precision"])
+            valRecallList.append(valMetrics["recall"])
+            valF1List.append(valMetrics["f1"])
+            if valMetrics["rocAuc"] is not None:
+                valRocAucList.append(valMetrics["rocAuc"])
+            else:
+                valRocAucList.append(np.nan)
+
+            print(f"Epoch {epoch+1}: \nTrain Loss={trainMetrics['loss']:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={valAcc:.4f} ")
+
+            if valLoss < bestValLoss - minDelta:
+                bestValLoss = valLoss
+                epochsNoImprove = 0
+                self.saveCheckpoint(checkpointPath, epoch=epoch+1, bestValLoss=bestValLoss)
+                print(f"Saved Checkpoint")
+            else:
+                epochsNoImprove += 1
+            
+            if epochsNoImprove >= earlyStopping:
+                print(f"Early Stopping")
+                break
+
+        return {
+            "trainLoss": trainLossList,
+            "trainAcc": trainAccList,
+            "valLoss": valLossList,
+            "valAcc": valAccList,
+            "valPrecision": valPrecisionList,
+            "valRecall": valRecallList,
+            "valF1": valF1List,
+            "valRocAuc": valRocAucList,
+        }
+
+    def validate(self, valLoader):
+        loss, acc, outputTrue, outputPred, outputProb = self.evaluate(valLoader)
+        metrics = self.calcMetrics(outputPred, outputTrue, outputProb)
+        return loss, acc, metrics
 
     def test(self, testLoader):
-        self.model.eval()
-        total = 0
-        correct = 0
-        with torch.no_grad():
-            for images, labels in testLoader:
-                images = images.to(self.device)
-                labels = labels.to(self.device)
+        loss, acc, outputTrue, outputPred, outputProb = self.evaluate(testLoader)
+        metrics = self.calcMetrics(outputPred, outputTrue, outputProb)
+        return loss, acc, metrics
+    
+    def calcMetrics(self, outputPred, outputTrue, outputProb):
+        precision = precision_score(outputTrue, outputPred, pos_label=1, zero_division=0)
+        recall = recall_score(outputTrue, outputPred, pos_label=1, zero_division=0)
+        f1 = f1_score(outputTrue, outputPred, pos_label=1, zero_division=0)
+        cm = confusion_matrix(outputTrue, outputPred)
 
-                output = self.model(images)
-                total += labels.size(0) # gets batch size
-                _, preds = torch.max(output, 1) # gets the prediction
-                correct += (preds == labels).sum().item() # counts all predictions that were correct
-        acc = correct / total # calculates accuracy
-        print(acc)
+        rocAuc = None
+        if(np.unique(outputTrue)) == 2:
+            rocAuc = roc_auc_score(outputTrue, outputProb)
 
+        return {
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "cm": cm,
+            "rocAuc": rocAuc
+        }
+    
+    def saveCheckpoint(self, path, epoch, bestValLoss):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        torch.save({
+            "epoch": epoch,
+            "modelState": self.model.state_dict(),
+            "optimiserState": self.optimiser.state_dict(),
+            "schedularState": self.scheduler.state_dict(),
+            "bestValLoss": bestValLoss,\
+        }, path)
 
+    def loadCheckpoint(self, path, loadOptimiser, loadScheduler):
+        loadOptimiser = True
+        loadScheduler = True
+        checkpoint = torch.load(path, map_location=self.device)
+        if loadOptimiser and "optimiserState" in checkpoint:
+            self.optimiser.load_state_dict(checkpoint["optimiserState"])
+
+        if loadScheduler and "schedularState" in checkpoint:
+            self.scheduler.load_state_dict(checkpoint["schedularState"])
+        return checkpoint

@@ -24,4 +24,3 @@ def pltAcc(trainAcc, valAcc):
     plt.legend()
     plt.grid(True)
     plt.show()
-

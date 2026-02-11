@@ -21,7 +21,10 @@ def MNISTLoader():
     #print(len(trainSubset))
     return trainLoader, valLoader, testLoader
 
+#def BrainDatasetLoader():
+
+
 trainLoader,_,_ = MNISTLoader()
 images, labels = next(iter(trainLoader))
 print(images.size())
-print(labels.size())   
+print(labels.size())
