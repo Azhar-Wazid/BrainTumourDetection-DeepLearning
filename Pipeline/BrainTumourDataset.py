@@ -9,21 +9,21 @@ class BrainDataset(Dataset):
         self.dataFrame = dataFrame.reset_index(drop=True)
         self.rootDir = rootDir
         self.transform = transform
-        self.classlMap = {"normal": ("Healthy", 0), "tumor": ("Brain Tumor", 1)}
+        self.classMap = {"normal": ("Healthy", 0), "tumor": ("Brain Tumor", 1)}
     
     def __len__(self):
         return len(self.dataFrame)
     
     def __getitem__(self, index):
-        filename = str(self.dataFrame.loc[index, "images"]).strip()
+        filename = str(self.dataFrame.loc[index, "image"]).strip()
         classType = str(self.dataFrame.loc[index, "class"]).strip().lower()
 
-        if classType not in self.labelMap:
+        if classType not in self.classMap:
             raise ValueError(f"Invalid Class")
         
-        folderName, label = self.classlMap[classType]
+        folderName, label = self.classMap[classType]
         imgPath = os.path.join(self.rootDir, folderName, filename)
-        image = Image.open(imgPath)
+        image = Image.open(imgPath).convert('RGB')
 
         if self.transform != None:
             image = self.transform(image)
