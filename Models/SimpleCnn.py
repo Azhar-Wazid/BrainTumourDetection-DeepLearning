@@ -41,6 +41,8 @@ class SimpleCNN(nn.Module):
             nn.MaxPool2d(kernel_size= 2)
         )
 
+        self.pool = nn.AdaptiveAvgPool2d((3, 3))
+
         #Create Flatten/Output Layer
         self.classifer = nn.Sequential(
             nn.Flatten(),
@@ -55,5 +57,6 @@ class SimpleCNN(nn.Module):
         input = self.convBlock1(input)
         input = self.convBlock2(input)
         input = self.convBlock3(input)
+        input = self.pool(input)
         output = self.classifer(input)
         return output

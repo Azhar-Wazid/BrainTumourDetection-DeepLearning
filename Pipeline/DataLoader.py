@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-from BrainTumourDataset import BrainDataset
+from Pipeline.BrainTumourDataset import BrainDataset
 
 def MNISTLoader():
     transform = transforms.Compose([
@@ -58,8 +58,10 @@ def BrainDatasetLoader(csvPath, rootDir, batchSize, numWorkers):
     testLoader = DataLoader(testDataset, batch_size=batchSize, shuffle=False, num_workers=numWorkers, pin_memory=True)
     
     return trainLoader, valLoader, testLoader
-
+"""
 trainLoader,_,_ = BrainDatasetLoader(csvPath=r"Dataset/BrainTumour/metadata_rgb_only.csv", rootDir=r"Dataset/BrainTumour/Brain Tumor Data Set/Brain Tumor Data Set", batchSize=16, numWorkers=0)
 images, labels = next(iter(trainLoader))
 print(images.shape)
 print(labels[:10])
+
+"""

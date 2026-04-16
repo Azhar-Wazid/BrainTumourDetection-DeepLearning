@@ -12,7 +12,7 @@ class ModelFunc:
     def __init__(self, model, device):
         self.model = model
         self.device = device
-        self.optimiser = torch.optim.AdamW(model.parameters(), lr= 0.0005, weight_decay=0.0001)
+        self.optimiser = torch.optim.AdamW(model.parameters(), lr= 0.0005, weight_decay=0.001)
         self.loss = nn.CrossEntropyLoss()
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimiser, mode='min', factor=0.5, patience=3, verbose=True)
     
@@ -83,6 +83,7 @@ class ModelFunc:
         trainLossList, valLossList = [], []
         trainAccList, valAccList = [], []
         valPrecisionList, valRecallList, valF1List, valRocAucList = [], [], [], []
+        valTrue, valProb = None, None
 
         bestValLoss = float("inf")
         epochsNoImprove = 0
@@ -91,13 +92,15 @@ class ModelFunc:
         
         for epoch in tqdm(range(amountOfEpoch), desc="Epochs"):
             trainMetrics = self.trainPerEpoch(trainLoader)
-            valLoss, valAcc, valMetrics = self.validate(valLoader)
+            valLoss, valAcc, valMetrics, valTrue, valProb = self.validate(valLoader)
             self.scheduler.step(valLoss)
 
             trainLossList.append(trainMetrics['loss'])
             valLossList.append(valLoss)
             trainAccList.append(trainMetrics['acc'])
             valAccList.append(valAcc)
+            valTrue = valTrue
+            valProb = valProb
 
             valPrecisionList.append(valMetrics["precision"])
             valRecallList.append(valMetrics["recall"])
@@ -107,7 +110,7 @@ class ModelFunc:
             else:
                 valRocAucList.append(np.nan)
 
-            print(f"Epoch {epoch+1}: \nTrain Loss={trainMetrics['loss']:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={valAcc:.4f} ")
+            print(f"\nEpoch {epoch+1}: \nTrain Loss={trainMetrics['loss']:.4f} \nValidation loss={valLoss:.4f} \nValidation Accuracy={valAcc:.4f} ")
 
             if valLoss < bestValLoss - minDelta:
                 bestValLoss = valLoss
@@ -122,26 +125,55 @@ class ModelFunc:
                 break
 
         return {
+            "type": "train", 
             "trainLoss": trainLossList,
             "trainAcc": trainAccList,
             "valLoss": valLossList,
             "valAcc": valAccList,
-            "valPrecision": valPrecisionList,
-            "valRecall": valRecallList,
-            "valF1": valF1List,
-            "valRocAuc": valRocAucList,
+            "precision": valPrecisionList,
+            "recall": valRecallList,
+            "F1": valF1List,
+            "rocAuc": valRocAucList,
+            "outputTrue": valTrue,
+            "outputProb": valProb
         }
 
     def validate(self, valLoader):
         loss, acc, outputTrue, outputPred, outputProb = self.evaluate(valLoader)
         metrics = self.calcMetrics(outputPred, outputTrue, outputProb)
-        return loss, acc, metrics
+        return loss, acc, metrics, outputTrue, outputProb
 
     def test(self, testLoader):
         loss, acc, outputTrue, outputPred, outputProb = self.evaluate(testLoader)
         metrics = self.calcMetrics(outputPred, outputTrue, outputProb)
-        return loss, acc, metrics
-    
+        lossList, accList = [], []
+
+        precisionList, recallList, F1List, RocAucList = [], [], [], []
+
+        lossList.append(loss)
+        accList.append(acc)
+        precisionList.append(metrics["precision"])
+        recallList.append(metrics["recall"])
+        F1List.append(metrics["f1"])
+        if metrics["rocAuc"] is not None:
+            RocAucList.append(metrics["rocAuc"])
+        else:
+            RocAucList.append(np.nan)
+
+        print(accList)
+        return{
+            "type": "test",
+            "loss": lossList,
+            "acc": accList,
+            "precision": precisionList,
+            "recall": recallList,
+            "F1": F1List,
+            "rocAuc": RocAucList,
+            "outputPred": outputPred,
+            "outputTrue": outputTrue,
+            "outputProb": outputProb
+        }
+
     def calcMetrics(self, outputPred, outputTrue, outputProb):
         precision = precision_score(outputTrue, outputPred, pos_label=1, zero_division=0)
         recall = recall_score(outputTrue, outputPred, pos_label=1, zero_division=0)
@@ -149,7 +181,7 @@ class ModelFunc:
         cm = confusion_matrix(outputTrue, outputPred)
 
         rocAuc = None
-        if(np.unique(outputTrue)) == 2:
+        if(len(np.unique(outputTrue))) == 2:
             rocAuc = roc_auc_score(outputTrue, outputProb)
 
         return {
@@ -167,10 +199,10 @@ class ModelFunc:
             "modelState": self.model.state_dict(),
             "optimiserState": self.optimiser.state_dict(),
             "schedularState": self.scheduler.state_dict(),
-            "bestValLoss": bestValLoss,\
+            "bestValLoss": bestValLoss,
         }, path)
 
-    def loadCheckpoint(self, path, loadOptimiser, loadScheduler):
+    def loadCheckpoint(self, path):
         loadOptimiser = True
         loadScheduler = True
         checkpoint = torch.load(path, map_location=self.device)
@@ -179,4 +211,7 @@ class ModelFunc:
 
         if loadScheduler and "schedularState" in checkpoint:
             self.scheduler.load_state_dict(checkpoint["schedularState"])
+        
+        if "modelState" in checkpoint:
+            self.model.load_state_dict(checkpoint["modelState"])
         return checkpoint
