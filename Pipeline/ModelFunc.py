@@ -215,3 +215,14 @@ class ModelFunc:
         if "modelState" in checkpoint:
             self.model.load_state_dict(checkpoint["modelState"])
         return checkpoint
+    
+    def predictSingleImage(self, model, input_tensor):
+        self.model.eval()
+
+        with torch.no_grad():
+            output = model(input_tensor)
+            probabilities = torch.softmax(output, dim=1)
+            predicted_class = torch.argmax(probabilities, dim=1).item()
+            confidence = probabilities[0][predicted_class].item()
+
+        return predicted_class, confidence

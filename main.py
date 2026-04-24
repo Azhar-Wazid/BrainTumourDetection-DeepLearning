@@ -2,7 +2,9 @@ import os
 import torch
 from Models.SimpleCnn import SimpleCNN
 from Models.AdvancedModels import *
-from Pipeline import ModelFunc, ModelEvaluation, DataLoader
+from Pipeline import ModelFunc, ModelEvaluation
+from Pipeline import DataLoader as Dl
+
 
 def ModelChoice():
     while True:
@@ -36,33 +38,37 @@ def funcChoice():
                 print("Error")
 
 
-"""
-def loadChoice(choice, path):
-    match choice:
-        case "y":
-            if os.path.exists(path) is False:
-                print("error file does not exist")
-                return None
-            return True
-        case "n":
-            return False
-        case "e":
-            quit()
-        case _:
-            print("Error")
-    return None
-"""
 def main():
+    #print("flag 2")
     #Checks if the computer has a compatible GPU else assign device as cpu
     if torch.cuda.is_available():
         device = torch.device("cuda")
+        print("gpu")
     else:
         device = torch.device("cpu")
+        print("cpu")
 
-    trainLoader,valLoader,testLoader = DataLoader.BrainDatasetLoader(csvPath=r"Dataset/BrainTumour/metadata_rgb_only.csv", rootDir=r"Dataset/BrainTumour/Brain Tumor Data Set/Brain Tumor Data Set", batchSize=16, numWorkers=0)
-    #images, labels = next(iter(trainLoader))
-    #print(images.shape)
-    #print(labels[:10])
+    csv_path = r"Dataset/BrainTumour/metadata_rgb_only.csv"
+    root_dir = r"Dataset/BrainTumour/Brain Tumor Data Set/Brain Tumor Data Set"
+
+    #print("CSV exists:", os.path.exists(csv_path), csv_path)
+    #print("Root exists:", os.path.exists(root_dir), root_dir)
+
+    try:
+        #print("About to call:", Dl.BrainDatasetLoader)
+        #print("From module:", Dl.__file__)
+        trainLoader, valLoader, testLoader = Dl.BrainDatasetLoader(
+            csvPath=csv_path,
+            rootDir=root_dir,
+            batchSize=16,
+            numWorkers=0
+        )
+        #print("flag 3")
+    except Exception as e:
+        print("Dataloader failed:", repr(e))
+        raise
+    #trainLoader,valLoader,testLoader = DataLoader.BrainDatasetLoader(csvPath=r"Dataset/BrainTumour/metadata_rgb_only.csv", rootDir=r"Dataset/BrainTumour/Brain Tumor Data Set/Brain Tumor Data Set", batchSize=16, numWorkers=0)
+    #print("flag 3")
 
     model = None
     modelName= None
@@ -101,28 +107,8 @@ def main():
     metricPath = os.path.join("ModelData", modelName, "results")
     ModelEvaluation.pltMetric(metrics=metric, path=metricPath)
 
-    """
-    model = SimpleCNN(inputShape= 1, obj_classes= 10)
-    #x = torch.randn(1, 1, 28, 28)
-    #print(model(x).shape)
-
-    modelFunc = ModelFunc(model, device)
-    model.to(device)
-
-    trainLoader, valLoader, testLoader = MNISTLoader()
-
-    epochs = 10
-    trainLossList, valLossList, trainAccList, valAccList = modelFunc.trainLoop(trainLoader= trainLoader, valLoader= valLoader, amountOfEpoch= epochs)
-    #print(trainLossList)
-    #print(valLossList)
-    pltLoss(trainLoss=trainLossList, valLoss=valLossList)
-    pltAcc(trainAcc=trainAccList, valAcc=valAccList)
-
-
-    #modelFunc.test(testLoader= testLoader)
-    """
-
 
 
 if __name__ == "__main__":
+    #print("flag 1")
     main()
