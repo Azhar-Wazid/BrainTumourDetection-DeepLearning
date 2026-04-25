@@ -14,7 +14,7 @@ class ModelFunc:
         self.device = device
         self.optimiser = torch.optim.AdamW(model.parameters(), lr= 0.0005, weight_decay=0.001)
         self.loss = nn.CrossEntropyLoss()
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimiser, mode='min', factor=0.5, patience=3, verbose=True)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimiser, mode='min', factor=0.5, patience=3)
     
     def trainPerEpoch(self, trainLoader):
         self.model.train()
