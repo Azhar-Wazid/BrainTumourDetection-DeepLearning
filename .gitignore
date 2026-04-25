@@ -1,2 +1,4 @@
 Dataset/
-ModelData/
+ModelData/efficientnet-b0/results
+ModelData/resnet18/
+ModelData/simpleCNN/results
